@@ -1,29 +1,7 @@
-const levenshtein = require('fast-levenshtein')
+const { distance } = require('fastest-levenshtein')
 const DEFAULT_TOLERANCE = 3
 
 class PhishingDetector {
-
-  /**
-   * Legacy phishing detector configuration.
-   *
-   * @typedef {object} LegacyPhishingDetectorConfiguration
-   * @property {string[]} [whitelist] - Origins that should not be blocked.
-   * @property {string[]} [blacklist] - Origins to block.
-   * @property {string[]} [fuzzylist] - Origins of common phishing targets.
-   * @property {number} [tolerance] - Tolerance to use for the fuzzylist levenshtein match.
-   */
-
-  /**
-   * A configuration object for phishing detection.
-   *
-   * @typedef {object} PhishingDetectorConfiguration
-   * @property {string[]} [allowlist] - Origins that should not be blocked.
-   * @property {string[]} [blocklist] - Origins to block.
-   * @property {string[]} [fuzzylist] - Origins of common phishing targets.
-   * @property {string} name - The name of this configuration. Used to explain to users why a site is being blocked.
-   * @property {number} [tolerance] - Tolerance to use for the fuzzylist levenshtein match.
-   * @property {number} version - The current version of the configuration.
-   */
 
   /**
    * Construct a phishing detector, which can check whether origins are known
@@ -79,26 +57,32 @@ class PhishingDetector {
     const source = domainToParts(fqdn)
 
     for (const { allowlist, name, version } of this.configs) {
-      // if source matches whitelist domain (or subdomain thereof), PASS
-      const whitelistMatch = matchPartsAgainstList(source, allowlist)
-      if (whitelistMatch) return { name, result: false, type: 'allowlist', version }
+      // if source matches allowlist hostname (or subdomain thereof), PASS
+      const allowlistMatch = matchPartsAgainstList(source, allowlist)
+      if (allowlistMatch) {
+        const match = domainPartsToDomain(allowlistMatch);
+        return { match, name, result: false, type: 'allowlist', version }
+      }
     }
 
     for (const { blocklist, fuzzylist, name, tolerance, version } of this.configs) {
-      // if source matches blacklist domain (or subdomain thereof), FAIL
-      const blacklistMatch = matchPartsAgainstList(source, blocklist)
-      if (blacklistMatch) return { name, result: true, type: 'blocklist', version }
+      // if source matches blocklist hostname (or subdomain thereof), FAIL
+      const blocklistMatch = matchPartsAgainstList(source, blocklist)
+      if (blocklistMatch) {
+        const match = domainPartsToDomain(blocklistMatch);
+        return { match, name, result: true, type: 'blocklist', version }
+      }
 
       if (tolerance > 0) {
         // check if near-match of whitelist domain, FAIL
         let fuzzyForm = domainPartsToFuzzyForm(source)
         // strip www
-        fuzzyForm = fuzzyForm.replace('www.', '')
+        fuzzyForm = fuzzyForm.replace(/^www\./, '')
         // check against fuzzylist
         const levenshteinMatched = fuzzylist.find((targetParts) => {
           const fuzzyTarget = domainPartsToFuzzyForm(targetParts)
-          const distance = levenshtein.get(fuzzyForm, fuzzyTarget)
-          return distance <= tolerance
+          const dist = distance(fuzzyForm, fuzzyTarget)
+          return dist <= tolerance
         })
         if (levenshteinMatched) {
           const match = domainPartsToDomain(levenshteinMatched)
@@ -113,6 +97,9 @@ class PhishingDetector {
 
 }
 
+PhishingDetector.processDomainList = processDomainList
+PhishingDetector.domainToParts = domainToParts
+PhishingDetector.domainPartsToDomain = domainPartsToDomain
 module.exports = PhishingDetector
 
 // util
@@ -175,11 +162,12 @@ function domainPartsToFuzzyForm(domainParts) {
 }
 
 // match the target parts, ignoring extra subdomains on source
+// returns parts for first found matching entry
 //   source: [io, metamask, xyz]
 //   target: [io, metamask]
 //   result: PASS
 function matchPartsAgainstList(source, list) {
-  return list.some((target) => {
+  return list.find((target) => {
     // target domain has more parts than source, fail
     if (target.length > source.length) return false
     // source matches target or (is deeper subdomain)

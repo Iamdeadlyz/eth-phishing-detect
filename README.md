@@ -2,9 +2,9 @@
 
 [![Greenkeeper badge](https://badges.greenkeeper.io/MetaMask/eth-phishing-detect.svg)](https://greenkeeper.io/)
 
-Utility for detecting phishing domains targeting Ethereum users.
+Utility for detecting phishing domains targeting Web3 users.
 
-For checking why a given domain was blocked, try our interactive page [here](https://metamask.github.io/eth-phishing-detect)
+For checking why a given domain was blocked, try our interactive page [here](https://metamask.github.io/eth-phishing-detect) (outdated)
 
 ## Blocking Policy
 
@@ -14,7 +14,8 @@ We are constantly evolving the ideal policy that guides this list, but a few cle
 
 There are other grounds for blocking, and we will ultimately do our best to keep our users safe.
 
-### basic usage
+
+### Basic usage
 
 ```js
 const checkForPhishing = require('eth-phishing-detect')
@@ -23,7 +24,7 @@ const value = checkForPhishing('etherclassicwallet.com')
 console.log(value) // true
 ```
 
-### advanced usage
+### Advanced usage
 
 ```js
 const PhishingDetector = require('eth-phishing-detect/src/detector')
@@ -41,8 +42,20 @@ console.log(value)
 
 ## Contributions
 
-To keep a tidy file, use the following CLI to add new phishing domains:
+
+For understanding the lists, see [`doc/lists-ref.md`](doc/lists-ref.md).
+Contributors are encouraged to read [`CONTRIBUTING.md`](./CONTRIBUTING.md) to for tips, pointers, and guidelines before reporting or collaborating.
+
+To keep a tidy file, use the following CLI to make changes to the list:
+
+### Adding hosts to blocklist
 
 ```
-yarn add:blacklist crypto-phishing-site.tld
+yarn add:blocklist crypto-phishing-site.tld
+```
+
+### Adding hosts to allowlist
+
+```
+yarn add:allowlist crypto-phishing-site.tld
 ```
